@@ -242,8 +242,10 @@ class Server:
                 cmdArray = allData.split('\n')
                 logging.debug(f"Received instructions data: {cmdArray}")
 
-                if cmdArray[-1] != "":
-                    cmdArray == cmdArray[:-1]
+                # Have no idea why this is needed
+
+                # if cmdArray[-1] != "":
+                #     cmdArray == cmdArray[:-1]
 
             self.process_instruction(cmdArray)
 
