@@ -14,9 +14,12 @@ class MyWindow(QMainWindow, Ui_server):
         self.user_ui = True
         self.start_tcp = False
         self.args = self.create_parser()
-        self.process_args(self.args)
 
+        self.process_args(self.args)
         self.server = Server()
+
+        if self.args.debug:
+            self.server.debug_mode = self.args.debug
 
         if self.user_ui:
             self.app = QApplication(sys.argv)
@@ -51,7 +54,7 @@ class MyWindow(QMainWindow, Ui_server):
             help='Open TCP')
         group_args_global.add_argument(
             '--debug', dest='debug', action='store_true', default=False,
-            help='Verbose logging.')
+            help='Debug mode + verbose logging')
 
         args = parser.parse_args()
 

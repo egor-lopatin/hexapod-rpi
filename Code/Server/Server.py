@@ -34,6 +34,7 @@ class StreamingOutput(io.BufferedIOBase):
 
 class Server:
     def __init__(self):
+        self.debug_mode = False
         self.tcp_flag = False
         self.led = Led()
         self.adc = ADC()
@@ -137,12 +138,16 @@ class Server:
 
             if batteryVoltage[0] < 5.5 or batteryVoltage[1] < 6:
                 logging.debug(
-                    "Battery voltage is too low, buzzer will be on for 3 times")
-                for i in range(3):
-                    self.buzzer.run("1")
-                    time.sleep(0.15)
-                    self.buzzer.run("0")
-                    time.sleep(0.1)
+                    f"Battery voltage is too low: LOAD {batteryVoltage[0]}, RASPI {batteryVoltage[1]}")
+
+                if (self.debug_mode == False):
+                    logging.warning(
+                        "Battery voltage is too low, buzzer will be on for 3 times")
+                    for i in range(3):
+                        self.buzzer.run("1")
+                        time.sleep(0.15)
+                        self.buzzer.run("0")
+                        time.sleep(0.1)
         except:
             pass
 
