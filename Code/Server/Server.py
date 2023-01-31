@@ -1,16 +1,14 @@
 # -*- coding: utf-8 -*-
-import io
 import time
 import fcntl
 import socket
 import struct
 import logging
-from picamera2 import Picamera2, Preview
+from threading import Thread
+from picamera2 import Picamera2
 from picamera2.encoders import JpegEncoder
 from picamera2.outputs import FileOutput
 from picamera2.encoders import Quality
-from threading import Condition
-import threading
 from Led import *
 from Servo import *
 from Thread import *
@@ -19,17 +17,8 @@ from Control import *
 from ADC import *
 from Ultrasonic import *
 from Command import COMMAND as cmd
+from Streaming import StreamingOutput
 
-
-class StreamingOutput(io.BufferedIOBase):
-    def __init__(self):
-        self.frame = None
-        self.condition = Condition()
-
-    def write(self, buf):
-        with self.condition:
-            self.frame = buf
-            self.condition.notify_all()
 
 
 class Server:
@@ -42,33 +31,41 @@ class Server:
         self.buzzer = Buzzer()
         self.control = Control()
         self.sonic = Ultrasonic()
-        self.control.Thread_conditiona.start()
-
         self.thread_led = None
         self.thread_sonic = None
 
-    def get_interface_ip(self):
+        self.control.Thread_conditiona.start()
+
+    @staticmethod
+    def get_interface_ip():
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         return socket.inet_ntoa(fcntl.ioctl(s.fileno(),
                                             0x8915,
                                             struct.pack('256s', b'wlan0'[:15])
                                             )[20:24])
 
+    @staticmethod
+    def send_data(connect, data):
+        try:
+            connect.send(data.encode('utf-8'))
+        except Exception as e:
+            logging.debug(f"Data send failed with the error: {e}")
+
     def turn_on_server(self):
-        # ip adress
-        HOST = self.get_interface_ip()
+        # ip address of the server
+        host = self.get_interface_ip()
         # Port 8002 for video transmission
         self.socket_video = socket.socket()
         self.socket_video.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
-        self.socket_video.bind((HOST, 8002))
+        self.socket_video.bind((host, 8002))
         self.socket_video.listen(1)
 
         # Port 5002 is used for instruction sending and receiving
         self.socket_data = socket.socket()
         self.socket_data.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
-        self.socket_data.bind((HOST, 5002))
+        self.socket_data.bind((host, 5002))
         self.socket_data.listen(1)
-        logging.info('Server address: ' + HOST)
+        logging.info('Server address: ' + host)
 
     def turn_off_server(self):
         try:
@@ -83,17 +80,11 @@ class Server:
         self.create_threads()
 
     def create_threads(self):
-        self.video = threading.Thread(target=self.transmission_video)
-        self.instructions = threading.Thread(target=self.receive_instruction)
+        self.video = Thread(target=self.transmission_video)
+        self.instructions = Thread(target=self.receive_instruction)
         self.video.start()
         self.instructions.start()
         logging.debug("Threads created")
-
-    def send_data(self, connect, data):
-        try:
-            connect.send(data.encode('utf-8'))
-        except Exception as e:
-            logging.debug(f"Data send failed with the error: {e}")
 
     def transmission_video(self):
         try:
@@ -103,12 +94,15 @@ class Server:
             pass
 
         self.socket_video.close()
+
         logging.info("Socket video connected")
 
         camera = Picamera2()
         camera.configure(camera.create_video_configuration(main={"size": (400, 300)}))
+
         output = StreamingOutput()
         encoder = JpegEncoder(q=90)
+
         camera.start_recording(encoder, FileOutput(output), quality=Quality.VERY_HIGH)
 
         while True:
@@ -117,12 +111,12 @@ class Server:
                 frame = output.frame
 
             try:
-                lenFrame = len(output.frame)
-                # logging.debug("output .length: ", lenFrame)
-                lengthBin = struct.pack('<I', lenFrame)
-                self.connection_video.write(lengthBin)
+                len_frame = len(output.frame)
+                # logging.debug("output .length: ", len_frame)
+                length_bin = struct.pack('<I', len_frame)
+                self.connection_video.write(length_bin)
                 self.connection_video.write(frame)
-            except Exception as e:
+            except:
                 camera.stop_recording()
                 camera.close()
                 logging.debug("End transmitting video")
@@ -130,17 +124,17 @@ class Server:
 
     def check_power(self):
         try:
-            batteryVoltage = self.adc.batteryPower()
-            command = cmd.CMD_POWER + "#" + str(batteryVoltage[0]) + "#" + str(
-                batteryVoltage[1]) + "\n"
+            battery_voltage = self.adc.batteryPower()
+            command = cmd.CMD_POWER + "#" + str(battery_voltage[0]) + "#" + str(
+                battery_voltage[1]) + "\n"
             logging.debug(f"CMD_POWER command: {command}")
             self.send_data(self.connection_data, command)
 
-            if batteryVoltage[0] < 5.5 or batteryVoltage[1] < 6:
+            if battery_voltage[0] < 5.5 or battery_voltage[1] < 6:
                 logging.debug(
-                    f"Battery voltage is too low: LOAD {batteryVoltage[0]}, RASPI {batteryVoltage[1]}")
+                    f"Battery voltage is too low: LOAD {battery_voltage[0]}, RASPI {battery_voltage[1]}")
 
-                if (self.debug_mode == False):
+                if not self.debug_mode:
                     logging.warning(
                         "Battery voltage is too low, buzzer will be on for 3 times")
                     for i in range(3):
@@ -156,7 +150,7 @@ class Server:
             stop_thread(self.thread_led)
         except:
             pass
-        self.thread_led = threading.Thread(target=self.led.light, args=(data,))
+        self.thread_led = Thread(target=self.led.light, args=(data,))
         self.thread_led.start()
 
     def process_sonic(self):
@@ -171,7 +165,7 @@ class Server:
             self.servo.setServoAngle(1, y)
 
     def process_relax(self):
-        if self.control.relax_flag == False:
+        if not self.control.relax_flag:
             self.control.relax(True)
             self.control.relax_flag = True
         else:
@@ -188,11 +182,11 @@ class Server:
         if len(data) == 3:
             self.servo.setServoAngle(int(data[1]), int(data[2]))
 
-    def process_instruction(self, cmdArray):
-        for oneCmd in cmdArray:
+    def process_instruction(self, cmd_array):
+        for oneCmd in cmd_array:
             data = oneCmd.split("#")
 
-            if data == None or data[0] == '':
+            if data is None or data[0] == '':
                 continue
             elif cmd.CMD_BUZZER in data:
                 self.buzzer.run(data[1])
@@ -219,7 +213,7 @@ class Server:
     def receive_instruction(self):
         try:
             self.connection_data, self.client_address = self.socket_data.accept()
-            logging.info(f"Client {self.client_address} connected successfuly!")
+            logging.info(f"Client {self.client_address} connected successfully!")
         except:
             logging.info("Connection failed")
 
@@ -227,7 +221,7 @@ class Server:
 
         while True:
             try:
-                allData = self.connection_data.recv(1024).decode('utf-8')
+                all_data = self.connection_data.recv(1024).decode('utf-8')
             except:
                 if self.tcp_flag:
                     self.reset_server()
@@ -235,19 +229,18 @@ class Server:
                 else:
                     break
 
-            if allData == "" and self.tcp_flag:
+            if all_data == "" and self.tcp_flag:
                 self.reset_server()
                 break
             else:
-                cmdArray = allData.split('\n')
-                logging.debug(f"Received instructions data: {cmdArray}")
+                cmd_array = all_data.split('\n')
+                logging.debug(f"Received instructions data: {cmd_array}")
 
-                # Have no idea why this is needed
+                # todo: Have no idea why this is needed
+                if cmd_array[-1] != "":
+                    cmd_array == cmd_array[:-1]
 
-                # if cmdArray[-1] != "":
-                #     cmdArray == cmdArray[:-1]
-
-            self.process_instruction(cmdArray)
+            self.process_instruction(cmd_array)
 
         try:
             stop_thread(self.thread_led)
