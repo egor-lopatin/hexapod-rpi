@@ -49,28 +49,28 @@ def test_Servo():
     try:
         
         for i in range(50):
-            servo.setServoAngle(15,90+i)
-            servo.setServoAngle(12,90+i)
-            servo.setServoAngle(9,90+i)
-            servo.setServoAngle(16,90+i)
-            servo.setServoAngle(19,90+i)
-            servo.setServoAngle(22,90+i)
+            servo.set_angle(15, 90 + i)
+            servo.set_angle(12, 90 + i)
+            servo.set_angle(9, 90 + i)
+            servo.set_angle(16, 90 + i)
+            servo.set_angle(19, 90 + i)
+            servo.set_angle(22, 90 + i)
             time.sleep(0.005)
         for i in range(60):
-            servo.setServoAngle(14,90+i)
-            servo.setServoAngle(11,90+i)
-            servo.setServoAngle(8,90+i)
-            servo.setServoAngle(17,90-i)
-            servo.setServoAngle(20,90-i)
-            servo.setServoAngle(23,90-i)
+            servo.set_angle(14, 90 + i)
+            servo.set_angle(11, 90 + i)
+            servo.set_angle(8, 90 + i)
+            servo.set_angle(17, 90 - i)
+            servo.set_angle(20, 90 - i)
+            servo.set_angle(23, 90 - i)
             time.sleep(0.005)
         for i in range(120):
-            servo.setServoAngle(13,i)
-            servo.setServoAngle(10,i)
-            servo.setServoAngle(31,i)
-            servo.setServoAngle(18,180-i)
-            servo.setServoAngle(21,180-i)
-            servo.setServoAngle(27,180-i)
+            servo.set_angle(13, i)
+            servo.set_angle(10, i)
+            servo.set_angle(31, i)
+            servo.set_angle(18, 180 - i)
+            servo.set_angle(21, 180 - i)
+            servo.set_angle(27, 180 - i)
             time.sleep(0.005)
         print ("\nEnd of program")      
     except KeyboardInterrupt:
@@ -118,16 +118,16 @@ def aa():
 def bb():
     while True:
         for i in range(30,150,1):
-            servo.setServoAngle(1,i)
+            servo.set_angle(1, i)
             time.sleep(0.05)
         for i in range(150,30,-1):
-            servo.setServoAngle(1,i)
+            servo.set_angle(1, i)
             time.sleep(0.05)
         for i in range(90,150,1):
-            servo.setServoAngle(0,i)
+            servo.set_angle(0, i)
             time.sleep(0.05)
         for i in range(150,90,-1):
-            servo.setServoAngle(0,i)
+            servo.set_angle(0, i)
             time.sleep(0.05)
 if __name__ == '__main__':
     print ('Program is starting ... ')
