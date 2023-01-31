@@ -3,10 +3,6 @@ from PCA9685 import PCA9685
 import time
 
 
-def mapNum(value, fromLow, fromHigh, toLow, toHigh):
-    return (toHigh - toLow) * (value - fromLow) / (fromHigh - fromLow) + toLow
-
-
 class Servo:
     def __init__(self):
         self.pwm_40 = PCA9685(0x40, debug=True)
@@ -17,16 +13,19 @@ class Servo:
         self.pwm_41.setPWMFreq(50)
         time.sleep(0.01)
 
-        # Convert the input angle to the value of pca9685
+    @staticmethod
+    def map_num(value, from_low, from_high, to_low, to_high):
+        return (to_high - to_low) * (value - from_low) / (from_high - from_low) + to_low
 
-    def setServoAngle(self, channel, angle):
+    # Convert the input angle to the value of pca9685
+    def set_angle(self, channel, angle):
         if channel < 16:
-            date = mapNum(mapNum(angle, 0, 180, 500, 2500), 0, 20000, 0,
-                          4095)  # 0-180 map to 500-2500us ,then map to duty 0-4095
+            date = self.map_num(self.map_num(angle, 0, 180, 500, 2500), 0, 20000, 0,
+                                4095)  # 0-180 map to 500-2500us ,then map to duty 0-4095
             self.pwm_41.setPWM(channel, 0, int(date))
-        elif channel >= 16 and channel < 32:
+        elif 16 <= channel < 32:
             channel -= 16
-            date = mapNum(mapNum(angle, 0, 180, 500, 2500), 0, 20000, 0, 4095)  #
+            date = self.map_num(self.map_num(angle, 0, 180, 500, 2500), 0, 20000, 0, 4095)  #
             self.pwm_40.setPWM(channel, 0, int(date))
         # time.sleep(0.0001)
 
@@ -38,14 +37,14 @@ class Servo:
 
 
 def servo_installation_position():
-    S = Servo()
+    servo = Servo()
     for i in range(32):
-        if (i == 10 or i == 13 or i == 31):
-            S.setServoAngle(i, 0)
-        elif (i == 18 or i == 21 or i == 27):
-            S.setServoAngle(i, 180)
+        if i == 10 or i == 13 or i == 31:
+            servo.set_angle(i, 0)
+        elif i == 18 or i == 21 or i == 27:
+            servo.set_angle(i, 180)
         else:
-            S.setServoAngle(i, 90)
+            servo.set_angle(i, 90)
     time.sleep(3)
 
 

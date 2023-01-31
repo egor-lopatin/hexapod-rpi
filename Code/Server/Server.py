@@ -16,9 +16,8 @@ from Buzzer import *
 from Control import *
 from ADC import *
 from Ultrasonic import *
-from Command import COMMAND as cmd
+from Command import COMMAND as CMD
 from Streaming import StreamingOutput
-
 
 
 class Server:
@@ -34,7 +33,7 @@ class Server:
         self.thread_led = None
         self.thread_sonic = None
 
-        self.control.Thread_conditiona.start()
+        self.control.thread_condition.start()
 
     @staticmethod
     def get_interface_ip():
@@ -72,7 +71,7 @@ class Server:
             self.connection_video.close()
             self.connection_data.close()
         except:
-            logging.debug('\n' + "No client connection")
+            logging.debug("No client connection")
 
     def reset_server(self):
         self.turn_off_server()
@@ -122,10 +121,42 @@ class Server:
                 logging.debug("End transmitting video")
                 break
 
+    def process_led(self, data):
+        try:
+            stop_thread(self.thread_led)
+        except:
+            pass
+        self.thread_led = Thread(target=self.led.light, args=(data,))
+        self.thread_led.start()
+
+    def process_head(self, data):
+        if len(data) == 3:
+            self.servo.set_angle(int(data[1]), int(data[2]))
+
+    def process_sonic(self):
+        command = CMD.CMD_SONIC + "#" + str(self.sonic.getDistance()) + "\n"
+        self.send_data(self.connection_data, command)
+
+    def process_camera(self, data):
+        if len(data) == 3:
+            x = self.control.restriction(int(data[1]), 50, 180)
+            y = self.control.restriction(int(data[2]), 0, 180)
+            self.servo.set_angle(0, x)
+            self.servo.set_angle(1, y)
+
+    def process_relax(self):
+        logging.debug("Relaxing servos")
+        if not self.control.relax_flag:
+            self.control.relax(True)
+            self.control.relax_flag = True
+        else:
+            self.control.relax(False)
+            self.control.relax_flag = False
+
     def check_power(self):
         try:
             battery_voltage = self.adc.batteryPower()
-            command = cmd.CMD_POWER + "#" + str(battery_voltage[0]) + "#" + str(
+            command = CMD.CMD_POWER + "#" + str(battery_voltage[0]) + "#" + str(
                 battery_voltage[1]) + "\n"
             logging.debug(f"CMD_POWER command: {command}")
             self.send_data(self.connection_data, command)
@@ -145,42 +176,11 @@ class Server:
         except:
             pass
 
-    def process_led(self, data):
-        try:
-            stop_thread(self.thread_led)
-        except:
-            pass
-        self.thread_led = Thread(target=self.led.light, args=(data,))
-        self.thread_led.start()
-
-    def process_sonic(self):
-        command = cmd.CMD_SONIC + "#" + str(self.sonic.getDistance()) + "\n"
-        self.send_data(self.connection_data, command)
-
-    def process_camera(self, data):
-        if len(data) == 3:
-            x = self.control.restriction(int(data[1]), 50, 180)
-            y = self.control.restriction(int(data[2]), 0, 180)
-            self.servo.setServoAngle(0, x)
-            self.servo.setServoAngle(1, y)
-
-    def process_relax(self):
-        if not self.control.relax_flag:
-            self.control.relax(True)
-            self.control.relax_flag = True
-        else:
-            self.control.relax(False)
-            self.control.relax_flag = False
-
     def process_servo_power(self, data):
         if data[1] == "0":
             GPIO.output(self.control.GPIO_4, True)
         else:
             GPIO.output(self.control.GPIO_4, False)
-
-    def process_head(self, data):
-        if len(data) == 3:
-            self.servo.setServoAngle(int(data[1]), int(data[2]))
 
     def process_instruction(self, cmd_array):
         for oneCmd in cmd_array:
@@ -188,23 +188,23 @@ class Server:
 
             if data is None or data[0] == '':
                 continue
-            elif cmd.CMD_BUZZER in data:
+            elif CMD.CMD_BUZZER in data:
                 self.buzzer.run(data[1])
-            elif cmd.CMD_POWER in data:
+            elif CMD.CMD_POWER in data:
                 self.check_power()
-            elif cmd.CMD_LED in data:
+            elif CMD.CMD_LED in data:
                 self.process_led(data)
-            elif cmd.CMD_LED_MOD in data:
+            elif CMD.CMD_LED_MOD in data:
                 self.process_led(data)
-            elif cmd.CMD_SONIC in data:
+            elif CMD.CMD_SONIC in data:
                 self.process_sonic()
-            elif cmd.CMD_HEAD in data:
+            elif CMD.CMD_HEAD in data:
                 self.process_head(data)
-            elif cmd.CMD_CAMERA in data:
+            elif CMD.CMD_CAMERA in data:
                 self.process_camera(data)
-            elif cmd.CMD_RELAX in data:
+            elif CMD.CMD_RELAX in data:
                 self.process_relax()
-            elif cmd.CMD_SERVOPOWER in data:
+            elif CMD.CMD_SERVOPOWER in data:
                 self.process_servo_power(data)
             else:
                 self.control.order = data
