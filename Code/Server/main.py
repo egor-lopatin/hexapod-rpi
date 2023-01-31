@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
 import sys
-import argparse
 import logging
-from ui_server import Ui_server
+import argparse
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from Server import *
-from Control import *
+from ui_server import Ui_server
 
 
 class MyWindow(QMainWindow, Ui_server):
