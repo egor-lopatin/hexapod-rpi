@@ -53,6 +53,7 @@ class Server:
     def turn_on_server(self):
         # ip address of the server
         host = self.get_interface_ip()
+
         # Port 8002 for video transmission
         self.socket_video = socket.socket()
         self.socket_video.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
@@ -64,6 +65,7 @@ class Server:
         self.socket_data.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
         self.socket_data.bind((host, 5002))
         self.socket_data.listen(1)
+
         logging.info('Server address: ' + host)
 
     def turn_off_server(self):
