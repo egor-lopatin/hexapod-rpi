@@ -39,10 +39,13 @@ class Servo:
 def servo_installation_position():
     servo = Servo()
     for i in range(32):
+        # right tibia
         if i == 10 or i == 13 or i == 31:
             servo.set_angle(i, 0)
+        # left tibia
         elif i == 18 or i == 21 or i == 27:
             servo.set_angle(i, 180)
+        # right & left femur and coxa
         else:
             servo.set_angle(i, 90)
     time.sleep(3)
